@@ -1,15 +1,15 @@
 let ttt = (function() {
     const gameboard = (function(){
         let board = {
-            topLeft: "",
+            topLeft: "X",
             top: "",
-            topRight: "",
+            topRight: "0",
             midLeft: "",
             mid: "",
             midRight: "",
             botLeft: "",
-            bot: "",
-            botRight: ""
+            bot: "X",
+            botRight: "0"
         };
 
         const printBoard = () => {
@@ -18,24 +18,29 @@ let ttt = (function() {
             console.log(`${board.botLeft} | ${board.bot} | ${board.botRight}`);
         };
 
+        const resetBoard = () => {
+            for(key in board) {
+                if (board.hasOwnProperty(key)) {
+                    board[key] = "";
+                };
+            };
+            gameboard.printBoard();
+        };
+
         const getMoves = () => {
             return Object.keys(board);
-        }
-
-        const checkMove = (move) => {
-            if(move in board) {return true};
-        }
+        };
 
         const makeMove = (marker, position) => {
             board[String(position)] = marker;
-        }
+        };
 
         const checkWin = () => {
             let checkCell = (cell) => {
                 if (board[String(cell)] === play.playerTurn.getMarker()) {
                     return true;
                 } else {return false} 
-            } 
+            };
 
             if(
                 checkCell("topLeft") && checkCell("top") && checkCell("topRight") ||
@@ -48,34 +53,34 @@ let ttt = (function() {
                 checkCell("top") && checkCell("mid") && checkCell("bot")) {
                     console.log(`${play.playerTurn.getName()} won!!`)
                     play.playerTurn.updateWin();
-                    printScores;
-                }
-        }
+                    printScores();
+                };
+        };
 
-        return { printBoard, makeMove, checkWin, getMoves, checkMove};
-    })()
+        return { printBoard, makeMove, checkWin, getMoves, resetBoard };
+    })();
 
     function playerFactory(name, marker) {
         let score = 0;
 
         const updateWin = () => {
             score += 1;
-        }
+        };
 
         const getMarker = () => {
             return marker;
-        }
+        };
 
         const getName = () => {
             return name;
-        }
+        };
         
         const getScore = () => {
             return score;
-        }
+        };
 
         return { updateWin, getMarker, getName, getScore };
-    }
+    };
 
     let playerX = playerFactory("ONE", "X");
     let playerO = playerFactory("TWO", "0");
@@ -84,39 +89,23 @@ let ttt = (function() {
         let playerTurn = playerX; 
 
         const turn = () => {
-            if (requestMove() === true) {
+            let position = prompt(`${playerTurn.getName()}, what is your move?`);
+                gameboard.makeMove(playerTurn.getMarker(), position);
                 gameboard.printBoard();
                 gameboard.checkWin();
                 changeTurn();
                 requestNextTurn();
-            } else {
-                return 
-            }
-        }
-
-        const requestMove = () => {
-            let position = prompt(`${playerTurn.getName()}, what is your move?`);
-            if(gameboard.checkMove(position)) {
-                gameboard.makeMove(playerTurn.getMarker(), position);
-                return true;
-            } else {
-                console.log(`That was not a legal move.`);
-                console.log(`Run ttt.startGame() to try again.`);
-                console.log(`or run ttt.checkMoves to see all available moves.`);
-                return false;
-            }
-            
-        }
+        };
 
         const requestNextTurn = () => {
             confirm(`${playerTurn.getName()}, it is your turn. Ready?`) ? turn() : console.log("Game paused");
-        }
+        };
 
         const changeTurn = () => {
             playerTurn = playerTurn === playerO ? playerX : playerO;
-        }
+        };
 
-        return { turn, playerTurn }
+        return { turn, playerTurn };
     })();
 
     // Console Gane Controls
@@ -125,9 +114,7 @@ let ttt = (function() {
     };
 
     const restartGame = () => {
-        gameboard.board.forEach((key) =>{
-            key = ""
-        });
+        gameboard.resetBoard();
     };
 
     const printScores = () => {
@@ -142,7 +129,7 @@ let ttt = (function() {
         });
     };
 
-    console.log(`Run ttt.startGame() to start`)
+    console.log(`Run ttt.startGame() to start game in console.`);
 
-    return {startGame, restartGame, printScores, checkMoves, restartGame}
+    return {startGame, restartGame, printScores, checkMoves, restartGame};
 })();
