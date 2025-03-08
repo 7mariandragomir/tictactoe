@@ -11,27 +11,19 @@
     <header>
         <h1>Tic Tac Toe</h1>
         <p class="player">
-            <span>Player Name</span> (X): <span>0</span>
+            <span class="name">Player X</span> (X): <span id="x-score">0</span>
         </p>
         <p class="player">
-            <span>Player Name</span> (0): <span>0</span>
+            <span class="name" title="Change name?">Player 0</span> (0): <span id="o-score">0</span>
         </p>
     </header>
     
-    <div class="gameboard">
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
+    <div id="gameboard">
+
     </div>
     <div class="controls">
-        <button>Restart</button>
+        <button id="resetbtn">Restart</button>
     </div>
-    <script src="script.js" defer></script>
+    <script src="script.js"></script>
 </body>
 </html>

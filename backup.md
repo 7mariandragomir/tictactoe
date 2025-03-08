@@ -1,145 +1,147 @@
-let ttt = (function() {
-    const gameboard = (function(){
-        let board = {
-            topLeft: "X",
-            top: "",
-            topRight: "0",
-            midLeft: "",
-            mid: "",
-            midRight: "",
-            botLeft: "",
-            bot: "X",
-            botRight: "0"
-        };
-
-        const printBoard = () => {
-            console.log(`${board.topLeft} | ${board.top} | ${board.topRight}`);
-            console.log(`${board.midLeft} | ${board.mid} | ${board.midRight}`);
-            console.log(`${board.botLeft} | ${board.bot} | ${board.botRight}`);
-        };
-
-        const getMoves = () => {
-            return Object.keys(board);
+(function() {
+    const PubSub = {
+      events: {},
+      subscribe(event, callback) {
+        if(!this.events[event]) {
+          this.events[event] = [];
         }
-
-        const checkMove = (move) => {
-            if(move in board  && board[String(move)] == "") {return true};
+        this.events[event].push(callback);
+      },
+    
+      publish(event, data) {
+        if(this.events[event]) {
+          this.events[event].forEach(callback => callback(data));
         }
-
-        const makeMove = (marker, position) => {
-            board[String(position)] = marker;
+      }
+              publish(event, data) {
+            if(this.events[event]) {
+                this.events[event].forEach(callback => callback(data));
+            };
         }
-
-        const checkWin = () => {
-            let checkCell = (cell) => {
-                if (board[String(cell)] === play.playerTurn.getMarker()) {
-                    return true;
-                } else {return false} 
-            } 
-
-            if(
-                checkCell("topLeft") && checkCell("top") && checkCell("topRight") ||
-                checkCell("midLeft") && checkCell("mid") && checkCell("midRight") ||
-                checkCell("botLeft") && checkCell("bot") && checkCell("botRight") ||
-                checkCell("topLeft") && checkCell("mid") && checkCell("botRight") ||
-                checkCell("topRight") && checkCell("mid") && checkCell("botLeft") ||
-                checkCell("topLeft") && checkCell("midLeft") && checkCell("botLeft") ||
-                checkCell("topRight") && checkCell("midRight") && checkCell("botRight") ||
-                checkCell("top") && checkCell("mid") && checkCell("bot")) {
-                    console.log(`${play.playerTurn.getName()} won!!`)
-                    play.playerTurn.updateWin();
-                    printScores;
-                }
-        }
-
-        return { printBoard, makeMove, checkWin, getMoves, checkMove};
-    })()
-
-    function playerFactory(name, marker) {
-        let score = 0;
-
-        const updateWin = () => {
-            score += 1;
-        }
-
-        const getMarker = () => {
-            return marker;
-        }
-
-        const getName = () => {
-            return name;
-        }
-        
-        const getScore = () => {
-            return score;
-        }
-
-        return { updateWin, getMarker, getName, getScore };
     }
-
-    let playerX = playerFactory("ONE", "X");
-    let playerO = playerFactory("TWO", "0");
-
-    const play = (function() {
-        let playerTurn = playerX; 
-
-        const turn = () => {
-            requestMove();
-            gameboard.printBoard();
-            gameboard.checkWin();
-            changeTurn();
-            requestNextTurn();
-        }
-
-        const requestMove = () => {
-            let position = prompt(`${playerTurn.getName()}, what is your move?`);
-            if(gameboard.checkMove(position)) {
-                gameboard.makeMove(playerTurn.getMarker(), position);
-                return true;
-            } else {
-                console.log(`That was not a legal move or that cell is occupied.`);
-                console.log(`Run ttt.startGame() to try again.`);
-                console.log(`Or run ttt.checkMoves to see all available moves.`);
-                return;
-            }
-            
-        }
-
-        const requestNextTurn = () => {
-            confirm(`${playerTurn.getName()}, it is your turn. Ready?`) ? turn() : console.log("Game paused");
-        }
-
-        const changeTurn = () => {
-            playerTurn = playerTurn === playerO ? playerX : playerO;
-        }
-
-        return { turn, playerTurn }
+  
+    const gameboard = (function() {
+      let board = [
+        ['','',''],
+        ['','',''],
+        ['','','']
+      ];
+  
+      const getBoard = () => {
+        return board;
+      }
+  
+      const makeMove = (marker, row, col) => {
+        board[row][col] = marker;
+        PubSub.publish('boardUpdated', {board});
+      };
+  
+      const reset = () => {
+        board = [
+        ['','',''],
+        ['','',''],
+        ['','','']];
+        PubSub.publish('boardUpdated', {board});
+      };
+  
+      return { makeMove, reset, getBoard }
     })();
-
-    // Console Gane Controls
-    const startGame = () => {
-        play.turn();
-    };
-
-    const restartGame = () => {
-        gameboard.board.forEach((key) =>{
-            key = "";
+  
+    const displayController = (function() {
+      const boardContainer = document.getElementById('gameboard'); //gets the container where to draw cells
+      const render = (board) => {
+        clearBoard();
+        board.forEach((row, rowIndex) => {
+          row.forEach((cellValue, colIndex) => {
+            let cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.innerHTML =  cellValue;
+            bindCellClick(cell, rowIndex, colIndex);
+            boardContainer.appendChild(cell);
+          })
         });
-    };
+      };
+  
+      const clearBoard = () => {
+        boardContainer.innerHTML = '';
+      };
+  
+      const bindCellClick = (cell, row, col) => {
+        cell.addEventListener('click', () => {
+          PubSub.publish('cellClicked', {row, col});
+        })
+      };
+  
+      const resetButtonListener = () => {
+        let resetButton = document.getElementById('resetbtn'); 
+        resetButton.addEventListener('click', () => {
+          PubSub.publish('boardReset');
+        })
+      }
+  
+      PubSub.subscribe('boardReset', clearBoard);
+      PubSub.subscribe('boardUpdated', (data) => render(data.board));
+      resetButtonListener();
+  
+      return { render };
+    })();
+  
+    const gameController = (function() {
+      let currentPlayer = 'X'; 
+  
+      const startGame = () => {
+        gameboard.reset();
+        // PubSub.publish('boardUpdated', {board:gameboard.getBoard()});
+      };
+  
+      const handleCellClick = ({row, col}) => {
+        if (gameboard.getBoard()[row][col] !== '') return;
+  
+        gameboard.makeMove(currentPlayer, row, col);
+  
+        if (checkWin()) {
+          alert(`${currentPlayer} wins!`);
+          startGame();
+          return;
+        };
+  
+        if (checkDraw()) {
+          alert(`It's a draw!`);
+          startGame();
+          return;
+        };
+  
+        currentPlayer = (currentPlayer === 'X') ? 'O' : 'X';
+      };
+  
+      const checkWin = () => {
+        const board = gameboard.getBoard();
+  
+        const lines = [
+          ...board,
+          [board[0][0], board[1][0], board[2][0]],
+          [board[0][1], board[1][1], board[2][1]],
+          [board[0][2], board[1][2], board[2][2]],
+          [board[0][0], board[1][1], board[2][2]],
+          [board[0][2], board[1][1], board[2][0]]
+        ];
+        return lines.some(line => line.every(cell => cell === currentPlayer));
+      };
+  
+      const checkDraw = () => {
+        return gameboard.getBoard().flat().every(cell => cell !== '');
+      };
+  
+      PubSub.subscribe('cellClicked', handleCellClick);
+      PubSub.subscribe('boardReset', () => {
+        currentPlayer = 'X';
+        gameboard.reset();
+      });
 
-    const printScores = () => {
-        console.log(`${playerX.getName()} (${playerX.getMarker()}): ${playerX.getScore()}`);
-        console.log(`${playerO.getName()} (${playerO.getMarker()}): ${playerO.getScore()}`);
-    };
-
-    const checkMoves = () => {
-        let moves = gameboard.getMoves();
-        moves.forEach((move) => {
-            console.log(move);
-        });
-    };
-
-    console.log(`Run ttt.startGame() to start game in console.`)
-
-    return {startGame, restartGame, printScores, checkMoves, restartGame}
-})();
+  
+      return { startGame }
+    })();
+  
+    gameController.startGame();
+  })();
+  

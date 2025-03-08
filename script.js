@@ -1,135 +1,192 @@
-let ttt = (function() {
-    const gameboard = (function(){
-        let board = {
-            topLeft: "X",
-            top: "",
-            topRight: "0",
-            midLeft: "",
-            mid: "",
-            midRight: "",
-            botLeft: "",
-            bot: "X",
-            botRight: "0"
-        };
+(function(){
 
-        const printBoard = () => {
-            console.log(`${board.topLeft} | ${board.top} | ${board.topRight}`);
-            console.log(`${board.midLeft} | ${board.mid} | ${board.midRight}`);
-            console.log(`${board.botLeft} | ${board.bot} | ${board.botRight}`);
-        };
+    // basic pubsub module
+    const pubsub = {
+        events: {},
+        subscribe(event, callback) {
+            if (!this.events[event]) {
+                this.events[event] = [];
+            }; 
+            this.events[event].push(callback);
+        },
+        publish(event, data) {
+            if(this.events[event]) {
+                this.events[event].forEach(f => f(data));
+            }
+        }
+    };
+
+    // gameBoard module. handles the board array, updates it when a move is 
+    // made.
+    const gameBoard = (function() {
+        let board = [
+            ['','',''],
+            ['','',''],
+            ['','','']
+        ]; 
+
+        const getBoard = () => {
+            return board;
+        }; 
 
         const resetBoard = () => {
-            for(key in board) {
-                if (board.hasOwnProperty(key)) {
-                    board[key] = "";
-                };
+            board = [
+                ['','',''],
+                ['','',''],
+                ['','','']
+            ]; 
+            pubsub.publish('resetBoard', board);
+        };
+
+        const makeMove = (marker, rowIndex, colIndex) => {
+            board[rowIndex][colIndex] = marker;            
+            pubsub.publish('updatedBoard', board );
+        };
+
+        pubsub.subscribe('requestReset', resetBoard);
+
+        return { getBoard, resetBoard, makeMove }
+    })();
+
+    // displayController module. keeps track of game logic and handles the UI 
+    // updates
+    const displayController = (function() {
+        const boardContainer = document.getElementById('gameboard'); 
+        const render = (boardParam) => {
+            boardContainer.innerHTML = '';
+            boardParam.forEach((row, rowIndex) => {
+                row.forEach((cellValue, colIndex) => {
+                    let cellElement = document.createElement('div');
+                    cellElement.classList.add('cell');
+                    cellElement.innerHTML = cellValue;
+                    bindCellElement(cellElement, rowIndex, colIndex);
+                    boardContainer.appendChild(cellElement);
+                });
+            });
+        };
+        
+        const bindCellElement = (cell, row, col) => {
+            cell.addEventListener('click', () => {
+                pubsub.publish('cellClicked', {row, col});
+            });
+        };
+
+        // reset button
+        const resetButton = document.getElementById('resetbtn');
+        resetButton.addEventListener('click', () => {
+            pubsub.publish('requestReset');
+        })
+
+        // score update
+        const renderNewScore = ({ marker, score }) => {
+            if (marker === 'X') {
+                document.getElementById('x-score').innerHTML = score;
+            } else if(marker === 'O') {
+                document.getElementById('o-score').innerHTML = score;
+            }
+        };
+
+        // change name
+        const names = document.querySelectorAll('.name');
+        names.forEach(nm => {
+            nm.addEventListener('click', (e) => {
+                newName = prompt('Change name to...');
+                if(newName == '') {
+                    alert('player name cannot be blank');
+                }else {
+                    e.target.innerHTML = newName;
+                }
+            })
+        })
+
+        pubsub.subscribe('scoreUpdated', renderNewScore);
+        pubsub.subscribe('resetBoard', render);
+        pubsub.subscribe('updatedBoard', render);
+
+        return { render };
+    })();
+
+    // Player constructor function, used in the game controller module. 
+    const Player = function(marker) {
+        let score = 0;
+        return { marker, score }
+    };
+
+    // gameController module. handles game logic. 
+    const gameController = (function() {
+        let playerX = Player('X');
+        let PlayerO = Player('O');
+        let currentPlayer = playerX;
+
+        const handleCellClicked = ({row, col}) => {
+            gameBoard.makeMove(currentPlayer.marker, row, col);
+            if (checkWin()) {
+                alert(`${currentPlayer.marker} is the winner!`)
+                updateScore(currentPlayer);
+                console.log(currentPlayer.marker + ' - ' + currentPlayer.score);
+                gameBoard.resetBoard();
             };
-            gameboard.printBoard();
-        };
 
-        const getMoves = () => {
-            return Object.keys(board);
-        };
+            if(checkDraw()) {
+                alert(`It's a draw!`);
+                gameBoard.resetBoard();
+                return;
+            }
 
-        const makeMove = (marker, position) => {
-            board[String(position)] = marker;
+            currentPlayer = (currentPlayer == playerX) ? PlayerO : playerX;
+
         };
 
         const checkWin = () => {
-            let checkCell = (cell) => {
-                if (board[String(cell)] === play.playerTurn.getMarker()) {
+            let board = gameBoard.getBoard();
+            let winningConditions = [
+                [[0,0], [0,1], [0,2]],
+                [[1,0], [1,1], [1,2]],
+                [[2,0], [2,1], [2,2]],
+                [[0,0], [1,0], [2,0]],
+                [[0,1], [1,1], [2,1]],
+                [[0,2], [1,2], [2,2]],
+                [[0,0], [1,1], [2,2]],
+                [[0,2], [1,1], [2,0]]
+            ];
+
+            for(let condition of winningConditions) {
+                const [a, b, c] = condition;
+                const [rowA, colA] = a;
+                const [rowB, colB] = b;
+                const [rowC, colC] = c;
+
+                if(board[rowA][colA] !== '' && board[rowA][colA] === board[rowB][colB] && board[rowA][colA] === board[rowC][colC]) {
                     return true;
-                } else {return false} 
-            };
+                }
 
-            if(
-                checkCell("topLeft") && checkCell("top") && checkCell("topRight") ||
-                checkCell("midLeft") && checkCell("mid") && checkCell("midRight") ||
-                checkCell("botLeft") && checkCell("bot") && checkCell("botRight") ||
-                checkCell("topLeft") && checkCell("mid") && checkCell("botRight") ||
-                checkCell("topRight") && checkCell("mid") && checkCell("botLeft") ||
-                checkCell("topLeft") && checkCell("midLeft") && checkCell("botLeft") ||
-                checkCell("topRight") && checkCell("midRight") && checkCell("botRight") ||
-                checkCell("top") && checkCell("mid") && checkCell("bot")) {
-                    console.log(`${play.playerTurn.getName()} won!!`)
-                    play.playerTurn.updateWin();
-                    printScores();
-                };
+            }
         };
 
-        return { printBoard, makeMove, checkWin, getMoves, resetBoard };
+        const checkDraw = () => {
+            const board = gameBoard.getBoard();
+            const flatBoard = board.flat();
+
+            if(flatBoard.every(item => item !== '')) return true;
+
+        };
+
+        const updateScore = (player) => {
+            player.score += 1;
+            let marker = player.marker;
+            let score = player.score;
+            pubsub.publish('scoreUpdated', { marker, score });
+        };
+
+        const startGame = () => {
+            displayController.render(gameBoard.getBoard());
+        }
+
+        pubsub.subscribe('cellClicked', handleCellClicked);
+
+        return { startGame };
     })();
 
-    function playerFactory(name, marker) {
-        let score = 0;
+    gameController.startGame();
 
-        const updateWin = () => {
-            score += 1;
-        };
-
-        const getMarker = () => {
-            return marker;
-        };
-
-        const getName = () => {
-            return name;
-        };
-        
-        const getScore = () => {
-            return score;
-        };
-
-        return { updateWin, getMarker, getName, getScore };
-    };
-
-    let playerX = playerFactory("ONE", "X");
-    let playerO = playerFactory("TWO", "0");
-
-    const play = (function() {
-        let playerTurn = playerX; 
-
-        const turn = () => {
-            let position = prompt(`${playerTurn.getName()}, what is your move?`);
-                gameboard.makeMove(playerTurn.getMarker(), position);
-                gameboard.printBoard();
-                gameboard.checkWin();
-                changeTurn();
-                requestNextTurn();
-        };
-
-        const requestNextTurn = () => {
-            confirm(`${playerTurn.getName()}, it is your turn. Ready?`) ? turn() : console.log("Game paused");
-        };
-
-        const changeTurn = () => {
-            playerTurn = playerTurn === playerO ? playerX : playerO;
-        };
-
-        return { turn, playerTurn };
-    })();
-
-    // Console Gane Controls
-    const startGame = () => {
-        play.turn();
-    };
-
-    const restartGame = () => {
-        gameboard.resetBoard();
-    };
-
-    const printScores = () => {
-        console.log(`${playerX.getName()} (${playerX.getMarker()}): ${playerX.getScore()}`);
-        console.log(`${playerO.getName()} (${playerO.getMarker()}): ${playerO.getScore()}`);
-    };
-
-    const checkMoves = () => {
-        let moves = gameboard.getMoves();
-        moves.forEach((move) => {
-            console.log(move);
-        });
-    };
-
-    console.log(`Run ttt.startGame() to start game in console.`);
-
-    return {startGame, restartGame, printScores, checkMoves, restartGame};
-})();
+})()

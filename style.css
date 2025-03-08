@@ -41,7 +41,7 @@ header {
     }
 }
 
-.gameboard {
+#gameboard {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
@@ -52,6 +52,23 @@ header {
 
     & > .cell {
         border: .8rem solid #fff;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 10rem;
+        font-weight: bolder;
+        cursor: pointer;
+    }
+
+    & > .hoverx::before {
+        content: 'X';
+        color: #3a3a3a;
+    }
+
+    & > .hoverzero::before {
+        content: '0';
+        color: #3a3a3a;
     }
 
     & > .cell:nth-child(-n+3) {
@@ -86,4 +103,15 @@ button {
         cursor: pointer;
         transition-duration: .3s;
     }
+}
+
+.player {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.name {
+    cursor: pointer;
+    font-weight: 900;
 }
