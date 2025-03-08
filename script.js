@@ -39,8 +39,12 @@
         };
 
         const makeMove = (marker, rowIndex, colIndex) => {
-            board[rowIndex][colIndex] = marker;            
-            pubsub.publish('updatedBoard', board );
+            if(board[rowIndex][colIndex] == ''){
+                board[rowIndex][colIndex] = marker;            
+                pubsub.publish('updatedBoard', board );
+            } else if (board[rowIndex][colIndex] !== '') {
+                pubsub.publish('requestSwitchPlayer');
+            }
         };
 
         pubsub.subscribe('requestReset', resetBoard);
@@ -123,7 +127,6 @@
             if (checkWin()) {
                 alert(`${currentPlayer.marker} is the winner!`)
                 updateScore(currentPlayer);
-                console.log(currentPlayer.marker + ' - ' + currentPlayer.score);
                 gameBoard.resetBoard();
             };
 
@@ -133,7 +136,7 @@
                 return;
             }
 
-            currentPlayer = (currentPlayer == playerX) ? PlayerO : playerX;
+            switchPlayer();
 
         };
 
@@ -180,9 +183,14 @@
 
         const startGame = () => {
             displayController.render(gameBoard.getBoard());
+        };
+
+        const switchPlayer = () => {
+            currentPlayer = (currentPlayer == playerX) ? PlayerO : playerX;
         }
 
         pubsub.subscribe('cellClicked', handleCellClicked);
+        pubsub.subscribe('requestSwitchPlayer', switchPlayer);
 
         return { startGame };
     })();
